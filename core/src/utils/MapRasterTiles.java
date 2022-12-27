@@ -9,15 +9,7 @@ import java.io.InputStream;
 import java.net.URL;
 
 public class MapRasterTiles {
-    //Mapbox
-    //https://docs.mapbox.com/api/maps/raster-tiles/
-    /*static String mapServiceUrl = "https://api.mapbox.com/v4/";
-    static String token = "?access_token=" + Keys.MAPBOX;
-    static String tilesetId = "mapbox.satellite";
-    static String format = "@2x.jpg90";*/
-
     //Geoapify
-    //https://www.geoapify.com/get-started-with-maps-api
     static String mapServiceUrl = "https://maps.geoapify.com/v1/tile/";
     static String token = "?&apiKey=" + Keys.MAPBOX;
     static String tilesetId = "osm-bright";
