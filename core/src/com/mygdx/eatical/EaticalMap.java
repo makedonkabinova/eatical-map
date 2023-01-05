@@ -70,6 +70,7 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
     private OrthographicCamera camera;
     private Texture[] mapTiles;
     private ZoomXY beginTile;   // top left tile
+    private ZoomXY centerTile;
     private Geolocation selectedMarker;
     private MongoClient client;
     private MongoDatabase database;
@@ -81,6 +82,11 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
     private Skin skin;
     private Stage stage;
     private Viewport viewport;
+
+    private Geolocation left_top;
+    private Geolocation left_bottom;
+    private Geolocation right_top;
+    private Geolocation right_bottom;
 
     //State
     InterfaceState state = InterfaceState.INITIAL;
@@ -145,7 +151,7 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
         try {
             //in most cases, geolocation won't be in the center of the tile because tile borders are predetermined (geolocation can be at
             // the corner of a tile)
-            ZoomXY centerTile = MapRasterTiles.getTileNumber(CENTER_GEOLOCATION.lat, CENTER_GEOLOCATION.lng, ZOOM);
+            centerTile = MapRasterTiles.getTileNumber(CENTER_GEOLOCATION.lat, CENTER_GEOLOCATION.lng, ZOOM);
             mapTiles = MapRasterTiles.getRasterTileZone(centerTile, NUM_TILES);
             //you need the beginning tile (tile on the top left corner) to convert geolocation to a location in pixels.
             beginTile = new ZoomXY(ZOOM, centerTile.x - ((NUM_TILES - 1) / 2), centerTile.y - ((NUM_TILES - 1) / 2));
@@ -153,6 +159,7 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
             e.printStackTrace();
         }
 
+        initializeAngles();
         tiledMap = new TiledMap();
         MapLayers layers = tiledMap.getLayers();
 
@@ -175,6 +182,21 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
         stage.addActor(restaurantForm());
         stage.addActor(restaurantInfo());
         Gdx.input.setInputProcessor(stage);
+    }
+
+    private void initializeAngles() {
+        left_top = new Geolocation(
+                MapRasterTiles.tile2lat(beginTile.y, ZOOM),
+                MapRasterTiles.tile2long(beginTile.x, ZOOM));
+        left_bottom = new Geolocation(
+                MapRasterTiles.tile2lat( beginTile.y + (centerTile.y - beginTile.y) * NUM_TILES, ZOOM),
+                MapRasterTiles.tile2long(beginTile.x, ZOOM));
+        right_top = new Geolocation(
+                MapRasterTiles.tile2lat(beginTile.y, ZOOM),
+                MapRasterTiles.tile2long(beginTile.x + (centerTile.x - beginTile.x) * NUM_TILES, ZOOM));
+        right_bottom = new Geolocation(
+                left_bottom.lat,
+                right_top.lng );
     }
 
     @Override
@@ -278,16 +300,22 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
             if (Gdx.input.isTouched()) {
                 Vector3 touchPos = new Vector3();
                 touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
-                camera.unproject(touchPos);
 
-                // TODO: Implement screen position:: to coordinates
-                Geolocation locationTouched = new Geolocation(46.556452, 15.646115);
+                if(!activeWindowOverlap(touchPos)) {
+                    camera.unproject(touchPos);
 
-                if (state == InterfaceState.CHOOSE_LOCATION) {
-                    chooseLocation(locationTouched);
-                } else if (state == InterfaceState.FIND_RESTAURANT) {
-                    findClosestRestaurant(locationTouched);
+
+                    Geolocation locationTouched = findCoordinates(touchPos);
+
+                    if (state == InterfaceState.CHOOSE_LOCATION) {
+                        chooseLocation(locationTouched);
+                    } else if (state == InterfaceState.FIND_RESTAURANT) {
+                        findClosestRestaurant(locationTouched);
+                    }
+                } else {
+                    System.out.println("overlaps found!!!");
                 }
+
             }
         }
 
@@ -298,6 +326,42 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
 
         camera.position.x = MathUtils.clamp(camera.position.x, effectiveViewportWidth / 2f, WIDTH - effectiveViewportWidth / 3f);
         camera.position.y = MathUtils.clamp(camera.position.y, effectiveViewportHeight / 2f, HEIGHT - effectiveViewportHeight / 3f);
+    }
+
+    private boolean activeWindowOverlap(Vector3 touchPos) {
+//        if(state == InterfaceState.CHOOSE_LOCATION){
+            if(touchPos.x >= locationWindow.getX() - 70 &&   //TODO Hardcoded
+                    touchPos.x <= locationWindow.getX() + locationWindow.getWidth() - 70 &&
+                    touchPos.y >= Gdx.graphics.getHeight() - locationWindow.getY() - locationWindow.getHeight()&&
+                    touchPos.y <= (Gdx.graphics.getHeight() - locationWindow.getY()) + locationWindow.getY())
+                return true;
+//        }
+            System.out.println("window x: " + locationWindow.getX() + " <--> " + (locationWindow.getX() + locationWindow.getWidth()));
+            System.out.println("window y: " + (Gdx.graphics.getHeight() - locationWindow.getY() - locationWindow.getHeight() + " <--> " + (Gdx.graphics.getHeight() - locationWindow.getY()) + locationWindow.getY()));
+            System.out.println("click: " + touchPos.x + "<-->" + touchPos.y);
+
+
+
+
+
+
+
+
+        return false;
+    }
+
+    private Geolocation findCoordinates(Vector3 touchPos) {
+        double x = touchPos.x;
+        double y = touchPos.y;
+
+        double xScale = x / WIDTH;
+        double yScale = y / HEIGHT;
+
+
+        double lat = ((left_top.lat - left_bottom.lat) * yScale) + left_bottom.lat;
+        double lng = ((right_top.lng - left_top.lng) * xScale) + left_top.lng;
+
+        return new Geolocation(lat,lng);
     }
 
     private void findClosestRestaurant(Geolocation locationTouched) {
@@ -508,14 +572,14 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
     private void drawMarkers() {
         batch.begin();
         {
-            for (Geolocation marker : markers) {
+            for (int i = 0; i < markers.size(); i++) {
+
                 PixelPosition pixelPosition =
-                    MapRasterTiles.getPixelPosition(marker.lat, marker.lng, MapRasterTiles.TILE_SIZE, ZOOM, beginTile.x, beginTile.y,
+                    MapRasterTiles.getPixelPosition(markers.get(i).lat, markers.get(i).lng, MapRasterTiles.TILE_SIZE, ZOOM, beginTile.x, beginTile.y,
                         HEIGHT);
                 batch.draw(pin, pixelPosition.x, pixelPosition.y);
                 batch.setProjectionMatrix(camera.combined);
             }
-
             if (selectedMarker != null) {
                 PixelPosition pixelPosition =
                     MapRasterTiles.getPixelPosition(selectedMarker.lat, selectedMarker.lng, MapRasterTiles.TILE_SIZE, ZOOM, beginTile.x, beginTile.y,
@@ -537,10 +601,12 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
 
             Document location = new Document();
             location.append("type", "Point");
-            location.append("coordinates", Arrays.asList(selectedMarker.lng, selectedMarker.lat));
+            location.append("coordinates", Arrays.asList(selectedMarker.lat, selectedMarker.lng));
             restaurant.append("location", location);
 
             collection.insertOne(restaurant);
+
+            getRestaurants();
         } else {
             Log.error("No connection");
         }
