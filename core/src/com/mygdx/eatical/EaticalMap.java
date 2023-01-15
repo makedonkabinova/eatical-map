@@ -324,8 +324,8 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
         float effectiveViewportWidth = camera.viewportWidth * camera.zoom;
         float effectiveViewportHeight = camera.viewportHeight * camera.zoom;
 
-        camera.position.x = MathUtils.clamp(camera.position.x, effectiveViewportWidth / 2f, WIDTH - effectiveViewportWidth / 3f);
-        camera.position.y = MathUtils.clamp(camera.position.y, effectiveViewportHeight / 2f, HEIGHT - effectiveViewportHeight / 3f);
+        camera.position.x = MathUtils.clamp(camera.position.x, effectiveViewportWidth / 2f, WIDTH - effectiveViewportWidth / 2f);
+        camera.position.y = MathUtils.clamp(camera.position.y, effectiveViewportHeight / 2f, HEIGHT - effectiveViewportHeight / 2f);
     }
 
     private boolean activeWindowOverlap(Vector3 touchPos) {

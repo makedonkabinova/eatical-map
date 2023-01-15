@@ -10,7 +10,7 @@ public class DesktopLauncher {
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 		config.setForegroundFPS(60);
 		config.setTitle("Eatical Map");
-		config.setWindowedMode(700, 700);
+		config.setWindowedMode(900, 900);
 		config.setResizable(false);
 		new Lwjgl3Application(new EaticalMap(), config);
 	}
