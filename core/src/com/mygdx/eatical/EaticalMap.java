@@ -103,6 +103,7 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
     Label labelLongitudeInfoValue;
     Label labelNameValue;
     Label labelAddressValue;
+    Label labelTrafficValue;
 
     @Override
     public void create() {
@@ -130,6 +131,7 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
         labelLongitudeInfoValue = new Label("", skin);
         labelNameValue = new Label("", skin);
         labelAddressValue = new Label("", skin);
+        labelTrafficValue = new Label("", skin);
 
         batch = new SpriteBatch();
         stage = new Stage(viewport, batch);
@@ -382,6 +384,7 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
         restaurantInfoWindow.setVisible(true);
         labelNameValue.setText(closestRestaurant.name);
         labelAddressValue.setText(closestRestaurant.address);
+        labelTrafficValue.setText(closestRestaurant.numOfPeople);
         labelLongitudeInfoValue.setText(""+closestRestaurant.lng);
         labelLatitudeInfoValue.setText(""+closestRestaurant.lat);
     }
@@ -401,6 +404,10 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
         Label labelAddress = new Label("Address:", skin);
         windowTable.add(labelAddress).fill();
         windowTable.add(labelAddressValue).row();
+
+        Label labelTraffic = new Label("Current traffic:", skin);
+        windowTable.add(labelTraffic).fill();
+        windowTable.add(labelTrafficValue).row();
 
         Label labelLongitude = new Label("Longitude:", skin);
         windowTable.add(labelLongitude);
@@ -560,9 +567,12 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
             for (Document document : iterDoc) {
                 String name = (String) document.get("name");
                 String address = (String) document.get("address");
+                int numOfPeople = 0;
+                if( document.get("numOfPeople") != null)
+                    numOfPeople = (int) document.get("numOfPeople");
                 Document location = (Document) document.get("location");
                 ArrayList coordinates = (ArrayList) location.get("coordinates");
-                markers.add(new Geolocation((double) coordinates.get(0), (double) coordinates.get(1), name, address));
+                markers.add(new Geolocation((double) coordinates.get(0), (double) coordinates.get(1), name, address, numOfPeople));
             }
         } else {
             Log.error("Not connected to database");
@@ -577,14 +587,14 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
                 PixelPosition pixelPosition =
                     MapRasterTiles.getPixelPosition(markers.get(i).lat, markers.get(i).lng, MapRasterTiles.TILE_SIZE, ZOOM, beginTile.x, beginTile.y,
                         HEIGHT);
-                batch.draw(pin, pixelPosition.x, pixelPosition.y);
+                batch.draw(pin, pixelPosition.x-pin.getWidth()/2f, pixelPosition.y);
                 batch.setProjectionMatrix(camera.combined);
             }
             if (selectedMarker != null) {
                 PixelPosition pixelPosition =
                     MapRasterTiles.getPixelPosition(selectedMarker.lat, selectedMarker.lng, MapRasterTiles.TILE_SIZE, ZOOM, beginTile.x, beginTile.y,
                         HEIGHT);
-                batch.draw(bluePin, pixelPosition.x, pixelPosition.y);
+                batch.draw(bluePin, pixelPosition.x-pin.getWidth()/2f, pixelPosition.y);
                 batch.setProjectionMatrix(camera.combined);
             }
         }
@@ -648,6 +658,7 @@ public class EaticalMap extends ApplicationAdapter implements GestureDetector.Ge
                 labelLongitudeInfoValue.setText("");
                 labelNameValue.setText("");
                 labelAddressValue.setText("");
+                labelTrafficValue.setText("");
                 selectedMarker = null;
                 break;
             case CHOOSE_LOCATION:
